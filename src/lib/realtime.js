@@ -4,7 +4,6 @@ const APP_KEY = process.env.NEXT_PUBLIC_PUSHER_KEY;
 const APP_CLUSTER = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 const AUTH_ENDPOINT = process.env.NEXT_PUBLIC_PUSHER_AUTH_ENDPOINT;
 
-// Lazy-load Pusher SDK so it doesn't bloat the initial bundle
 async function getPusherClient() {
   const mod = await import("pusher-js");
   return mod.default || mod;
@@ -31,7 +30,7 @@ export async function subscribeToCallUpdates(onUpdate) {
 
   channel.bind("update-call", handleUpdateCall);
 
-  // Return cleanup function
+  // to cleanup
   return () => {
     try {
       channel.unbind("update-call", handleUpdateCall);

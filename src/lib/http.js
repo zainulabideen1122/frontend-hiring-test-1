@@ -23,7 +23,6 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Attach bearer token
 api.interceptors.request.use((config) => {
   const token = getToken();
   if (token) {
@@ -37,7 +36,6 @@ let isRefreshing = false;
 let refreshPromise = null;
 
 function refreshTokenRequest() {
-  // Use a bare axios to avoid interceptor recursion
   return axios.post(
     `${API_BASE}/auth/refresh-token`,
     {},
@@ -56,7 +54,7 @@ api.interceptors.response.use(
     const originalRequest = error.config || {};
     const status = error?.response?.status;
 
-    // Do not intercept auth endpoints (login/refresh) to prevent loops
+
     const url = (originalRequest.url || "").toString();
     const isAuthEndpoint =
       url.includes("/auth/login") || url.includes("/auth/refresh-token");

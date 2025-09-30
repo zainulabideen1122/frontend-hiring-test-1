@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { Card } from "antd";
+import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import CallTable from "@/components/CallTable";
 import FilterBar from "@/components/FilterBar";
@@ -17,13 +16,11 @@ export default function CallsListPage() {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   const [noteModal, setNoteModal] = useState({ open: false, call: null });
-  const [allFiltered, setAllFiltered] = useState(null); // when filtering, hold the full filtered dataset
 
-  async function load() {
+  async function fetchCallsData() {
     setLoading(true);
     try {
       if (filter === "all") {
-        // Server-side pagination
         const { nodes, totalCount } = await fetchCalls({
           offset: (page - 1) * pageSize,
           limit: pageSize,
@@ -33,9 +30,8 @@ export default function CallsListPage() {
         return;
       }
 
-      // Client-side pagination for status filter views: fetch a large chunk once, then slice per page
       const seedOffset = 0;
-      const seedLimit = 500; // reasonable upper bound for test dataset
+      const seedLimit = 500;
       const { nodes } = await fetchCalls({
         offset: seedOffset,
         limit: seedLimit,
@@ -56,22 +52,27 @@ export default function CallsListPage() {
   }
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchCallsData();
   }, [page, filter]);
 
   useEffect(() => {
-    let unsubscribe = null;
+    let unsubscribeFromUpdates = null;
+
     (async () => {
-      unsubscribe = await subscribeToCallUpdates(async (updatedCall) => {
-        // Merge the updated call into current list if present
-        setData((prev) =>
-          prev.map((c) => (c.id === updatedCall.id ? updatedCall : c))
+      unsubscribeFromUpdates = await subscribeToCallUpdates((incomingCall) => {
+        // Updateing data with the latest call info if it already exists
+        setData((currentCalls) =>
+          currentCalls.map((call) =>
+            call.id === incomingCall.id ? incomingCall : call
+          )
         );
       });
     })();
+
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeFromUpdates) {
+        unsubscribeFromUpdates();
+      }
     };
   }, []);
 
@@ -79,7 +80,7 @@ export default function CallsListPage() {
     try {
       await archiveCall(id, next);
       toast.success(next ? "Archived" : "Unarchived");
-      await load();
+      await fetchCallsData();
     } catch (e) {
       toast.error("Action failed");
     }
@@ -94,7 +95,7 @@ export default function CallsListPage() {
       if (!noteModal.call || !content?.trim()) return;
       await addNote(noteModal.call.id, content.trim());
       toast.success("Note added");
-      await load();
+      await fetchCallsData();
     } catch (e) {
       toast.error("Failed to add note");
     } finally {

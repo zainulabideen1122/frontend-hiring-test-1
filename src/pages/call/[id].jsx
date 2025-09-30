@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Card, Button, Input, List, message, Tag } from "antd";
 import { fetchCallById, addNote, archiveCall } from "@/lib/callService";
 import { subscribeToCallUpdates } from "@/lib/realtime";
+import CallDetailField from "@/components/CallDetailField";
 
 export default function CallDetailsPage() {
   const router = useRouter();
@@ -15,8 +16,8 @@ export default function CallDetailsPage() {
     if (!id) return;
     setLoading(true);
     try {
-      const c = await fetchCallById(id);
-      setCall(c);
+      const call = await fetchCallById(id);
+      setCall(call);
     } catch (e) {
       message.error("Failed to load call");
     } finally {
@@ -47,9 +48,9 @@ export default function CallDetailsPage() {
   async function onAddNote() {
     if (!note.trim()) return;
     try {
-      const updated = await addNote(id, note.trim());
-      setCall({ ...updated });
+      await addNote(id, note.trim());
       setNote("");
+      // State will be updated via realtime subscription
     } catch (e) {
       message.error("Failed to add note");
     }
@@ -57,8 +58,8 @@ export default function CallDetailsPage() {
 
   async function onToggleArchive() {
     try {
-      const updated = await archiveCall(id, !call.is_archived);
-      setCall({ ...updated });
+      await archiveCall(id, !call.is_archived);
+      // State will be updated via realtime subscription
     } catch (e) {
       message.error("Action failed");
     }
@@ -71,35 +72,22 @@ export default function CallDetailsPage() {
       <Button onClick={() => router.push("/")}>Back</Button>
       <Card title={`Call #${call.id}`} loading={loading}>
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">From:</span> {call.from}
-          </div>
-          <div>
-            <span className="text-muted-foreground">To:</span> {call.to}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Direction:</span>{" "}
-            {call.direction}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Via:</span> {call.via}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Type:</span>{" "}
+          <CallDetailField label="From" value={call.from} />
+          <CallDetailField label="To" value={call.to} />
+          <CallDetailField label="Direction" value={call.direction} />
+          <CallDetailField label="Via" value={call.via} />
+          <CallDetailField label="Type">
             <Tag>{call.call_type}</Tag>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Duration:</span>{" "}
+          </CallDetailField>
+          <CallDetailField label="Duration">
             {Math.round(call.duration / 60)}m {Math.round(call.duration % 60)}s
-          </div>
-          <div>
-            <span className="text-muted-foreground">Created at:</span>{" "}
+          </CallDetailField>
+          <CallDetailField label="Created at">
             {new Date(call.created_at).toLocaleString()}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Status:</span>{" "}
+          </CallDetailField>
+          <CallDetailField label="Status">
             {call.is_archived ? "Archived" : "Active"}
-          </div>
+          </CallDetailField>
         </div>
         <div className="mt-4">
           <Button onClick={onToggleArchive}>

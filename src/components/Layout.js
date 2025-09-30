@@ -1,4 +1,4 @@
-import HeaderBar from "@/components/HeaderBar";
+import HeaderBar from "@/components/Header";
 import { useRouter } from "next/router";
 
 export default function Layout({ children, onLogout }) {
