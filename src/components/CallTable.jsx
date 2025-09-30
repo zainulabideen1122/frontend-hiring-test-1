@@ -5,7 +5,6 @@ function buildColumns(props) {
   return buildCallTableColumns(props);
 }
 
-// Table component
 export default function CallTable({
   data,
   loading,

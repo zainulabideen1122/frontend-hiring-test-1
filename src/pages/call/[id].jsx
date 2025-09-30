@@ -50,7 +50,6 @@ export default function CallDetailsPage() {
     try {
       await addNote(id, note.trim());
       setNote("");
-      // State will be updated via realtime subscription
     } catch (e) {
       message.error("Failed to add note");
     }
@@ -59,7 +58,6 @@ export default function CallDetailsPage() {
   async function onToggleArchive() {
     try {
       await archiveCall(id, !call.is_archived);
-      // State will be updated via realtime subscription
     } catch (e) {
       message.error("Action failed");
     }
