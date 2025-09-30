@@ -1,0 +1,130 @@
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { Card, Button, Input, List, message, Tag } from "antd";
+import { fetchCallById, addNote, archiveCall } from "@/lib/callService";
+import { subscribeToCallUpdates } from "@/lib/realtime";
+
+export default function CallDetailsPage() {
+  const router = useRouter();
+  const { id } = router.query || {};
+  const [call, setCall] = useState(null);
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function fetchCallsData() {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const c = await fetchCallById(id);
+      setCall(c);
+    } catch (e) {
+      message.error("Failed to load call");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchCallsData();
+  }, [id]);
+
+  // pusher
+  useEffect(() => {
+    let unsubscribe = null;
+    (async () => {
+      unsubscribe = await subscribeToCallUpdates((updated) => {
+        if (!updated || !updated.id || !id) return;
+        if (String(updated.id) === String(id)) {
+          setCall(updated);
+        }
+      });
+    })();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [id]);
+
+  async function onAddNote() {
+    if (!note.trim()) return;
+    try {
+      const updated = await addNote(id, note.trim());
+      setCall({ ...updated });
+      setNote("");
+    } catch (e) {
+      message.error("Failed to add note");
+    }
+  }
+
+  async function onToggleArchive() {
+    try {
+      const updated = await archiveCall(id, !call.is_archived);
+      setCall({ ...updated });
+    } catch (e) {
+      message.error("Action failed");
+    }
+  }
+
+  if (!call) return <div className="p-6">Loading…</div>;
+
+  return (
+    <div className="p-6 max-w-3xl mx-auto space-y-4">
+      <Button onClick={() => router.push("/")}>Back</Button>
+      <Card title={`Call #${call.id}`} loading={loading}>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="text-muted-foreground">From:</span> {call.from}
+          </div>
+          <div>
+            <span className="text-muted-foreground">To:</span> {call.to}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Direction:</span>{" "}
+            {call.direction}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Via:</span> {call.via}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Type:</span>{" "}
+            <Tag>{call.call_type}</Tag>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Duration:</span>{" "}
+            {Math.round(call.duration / 60)}m {Math.round(call.duration % 60)}s
+          </div>
+          <div>
+            <span className="text-muted-foreground">Created at:</span>{" "}
+            {new Date(call.created_at).toLocaleString()}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Status:</span>{" "}
+            {call.is_archived ? "Archived" : "Active"}
+          </div>
+        </div>
+        <div className="mt-4">
+          <Button onClick={onToggleArchive}>
+            {call.is_archived ? "Unarchive" : "Archive"}
+          </Button>
+        </div>
+      </Card>
+
+      <Card title="Notes">
+        <div className="flex items-center gap-2 mb-3">
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Add a note"
+          />
+          <Button type="primary" onClick={onAddNote}>
+            Add
+          </Button>
+        </div>
+        <List
+          dataSource={call.notes}
+          locale={{ emptyText: "No notes" }}
+          renderItem={(n) => <List.Item>{n.content}</List.Item>}
+        />
+      </Card>
+    </div>
+  );
+}
